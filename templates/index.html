@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            background-color: #f0f2f5; 
+            margin: 0; 
+            padding: 20px;
+        }
+
+        #chatContainer {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        #friendsDropdown {
+            padding: 20px;
+            background-color: #4475f1;
+            color: white;
+        }
+
+        #friendSelect {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            margin-top: 10px;
+            background-color: white;
+            cursor: pointer;
+            outline: none;
+        }
+
+        #chatBox {
+            display: none;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        #chatWith {
+            padding: 15px 20px;
+            background-color: #4475f1;
+            color: white;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .status-indicator {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        #messages {
+            flex: 1;
+            padding: 20px;
+            background-color: #f8f9fa;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.success { 
+            background-color: #4475f1;
+            color: white; 
+            margin-left: auto;
+        }
+
+        .message.failed { 
+            background-color: #dc3545;
+            color: white; 
+            margin-left: auto;
+        }
+
+        .message.incoming { 
+            background-color: #e9ecef;
+            color: #212529;
+            margin-right: auto;
+        }
+
+        .message.auto-reply {
+            background-color: #2196F3;
+            color: white;
+            margin-right: auto;
+            font-style: italic;
+        }
+
+        .message-time {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .message-status {
+            position: absolute;
+            bottom: -18px;
+            right: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .input-area {
+            padding: 15px;
+            background-color: white;
+            border-top: 1px solid #e1e1e1;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #e1e1e1;
+            border-radius: 24px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #4475f1;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            font-weight: 500;
+            outline: none;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #sendButton {
+            background-color: #4475f1;
+            color: white;
+        }
+
+        #sendButton:hover {
+            background-color: #3461d6;
+        }
+
+        .clear-button {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+
+        .clear-button:hover {
+            background-color: #dde2e6;
+        }
+
+        .error-message {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Scrollbar styling */
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        #messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatContainer">
+        <div id="friendsDropdown">
+            <h2 style="margin: 0 0 15px 0">Select a Peer</h2>
+            <select id="friendSelect">
+                <option value="">-- Choose a peer --</option>
+            </select>
+        </div>
+
+        <div id="error" class="error-message"></div>
+
+        <div id="chatBox">
+            <div id="chatWith">
+                <span id="friendName"></span>
+                <span class="status-indicator">online</span>
+            </div>
+            <div id="messages"></div>
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" 
+                           id="messageInput" 
+                           placeholder="Type a message..."
+                           autocomplete="off">
+                    <button id="sendButton">Send</button>
+                </div>
+                <div class="button-container">
+                    <button class="clear-button" id="clearChatButton">Clear Chat</button>
+                    <button class="clear-button" id="clearAllButton">Clear All Chats</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store messages in memory
+        let messagesHistory = {};
+        let currentPeer = null;
+
+        // Get DOM elements
+        const friendSelect = document.getElementById('friendSelect');
+        const chatBox = document.getElementById('chatBox');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const clearChatButton = document.getElementById('clearChatButton');
+        const clearAllButton = document.getElementById('clearAllButton');
+        const messagesContainer = document.getElementById('messages');
+        const errorDiv = document.getElementById('error');
+        const friendNameSpan = document.getElementById('friendName');
+
+        // Load peers list
+        fetch('/peers')
+            .then(response => response.json())
+            .then(peers => {
+                peers.forEach(peer => {
+                    const option = document.createElement('option');
+                    option.value = peer.id;
+                    option.textContent = peer.name;
+                    friendSelect.appendChild(option);
+                    // Initialize empty message array for each peer
+                    messagesHistory[peer.id] = [];
+                });
+            })
+            .catch(error => showError('Failed to load peers list'));
+
+        // Show error message
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Modify peer selection to handle updates
+        friendSelect.addEventListener('change', function() {
+            currentPeer = this.value;
+            if (currentPeer) {
+                friendNameSpan.textContent = this.options[this.selectedIndex].text;
+                chatBox.style.display = 'flex';
+                loadMessages(currentPeer);
+            } else {
+                chatBox.style.display = 'none';
+            }
+        });
+
+        // Load messages for a peer
+        function loadMessages(peerId) {
+            fetch(`/get_chat_history/${peerId}`)
+                .then(response => response.json())
+                .then(messages => {
+                    messagesHistory[peerId] = messages;
+                    displayMessages();
+                })
+                .catch(error => showError('Failed to load messages'));
+        }
+
+        // Display messages
+        function displayMessages() {
+            messagesContainer.innerHTML = '';
+            
+            if (currentPeer && messagesHistory[currentPeer]) {
+                messagesHistory[currentPeer].forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    
+                    // Determine message class
+                    let className = 'message ';
+                    if (msg.sender === window.peerName) {  // Use peer name from server
+                        className += msg.status;
+                    } else if (msg.auto_reply) {
+                        className += 'auto-reply';
+                    } else {
+                        className += 'incoming';
+                    }
+                    messageDiv.className = className;
+
+                    // Message content
+                    const messageContent = document.createElement('div');
+                    messageContent.className = 'message-content';
+                    messageContent.textContent = `${msg.sender}: ${msg.message}`;
+                    messageDiv.appendChild(messageContent);
+
+                    // Add timestamp
+                    if (msg.timestamp) {
+                        const timeDiv = document.createElement('div');
+                        timeDiv.className = 'message-time';
+                        const time = new Date(msg.timestamp);
+                        timeDiv.textContent = time.toLocaleTimeString();
+                        messageDiv.appendChild(timeDiv);
+                    }
+
+                    // Add status indicator for sent messages
+                    if (msg.sender === window.peerName) {
+                        const statusDiv = document.createElement('div');
+                        statusDiv.className = 'message-status';
+                        statusDiv.textContent = msg.status === 'success' ? '✓ Sent' : '✗ Failed';
+                        messageDiv.appendChild(statusDiv);
+                    }
+
+                    messagesContainer.appendChild(messageDiv);
+                });
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        let messageEventSource = null;
+
+        function startMessageListener() {
+            if (messageEventSource) {
+                messageEventSource.close();
+            }
+
+            messageEventSource = new EventSource('/message_updates');
+
+            messageEventSource.onmessage = function(event) {
+                const updateData = JSON.parse(event.data);
+
+                // If we have a chat open with this peer, update it
+                if (updateData.peer_id && messagesHistory[updateData.peer_id]) {
+                    loadMessages(updateData.peer_id);
+                }
+            };
+
+            messageEventSource.onerror = function(error) {
+                console.error('EventSource failed:', error);
+                messageEventSource.close();
+                // Try to reconnect after 5 seconds
+                setTimeout(startMessageListener, 5000);
+            };
+        }
+
+        // Start listening for updates when page loads
+        startMessageListener();
+
+        // Send message
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || !currentPeer) return;
+
+            messageInput.value = '';
+
+            fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    peer_id: currentPeer,
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                loadMessages(currentPeer);
+            })
+            .catch(error => {
+                showError('Failed to send message');
+                loadMessages(currentPeer);
+            });
+        }
+
+        // Clear current chat
+        function clearChat() {
+            if (!currentPeer) return;
+
+            fetch(`/clear_chat/${currentPeer}`, {
+                method: 'POST'
+            })
+            .then(() => {
+                messagesHistory[currentPeer] = [];
+                displayMessages();
+            })
+            .catch(error => showError('Failed to clear chat'));
+        }
+
+        // Clear all chats
+        function clearAllChats() {
+            fetch('/clear_all_chats', {
+                method: 'POST'
+            })
+            .then(() => {
+                Object.keys(messagesHistory).forEach(key => {
+                    messagesHistory[key] = [];
+                });
+                displayMessages();
+            })
+            .catch(error => showError('Failed to clear all chats'));
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        clearChatButton.addEventListener('click', clearChat);
+        clearAllButton.addEventListener('click', clearAllChats);
+        
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Get peer name from server when page loads
+        fetch('/peer_name')
+            .then(response => response.json())
+            .then(data => {
+                window.peerName = data.name;
+            })
+            .catch(error => showError('Failed to get peer name'));
+    </script>
+</body>
+</html>

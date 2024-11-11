@@ -1,0 +1,108 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Controller Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        function updateProxyEndpoints(proxyId) {
+            const config = document.getElementById(`config_${proxyId}`).value;
+            try {
+                // Validate JSON
+                JSON.parse(config);
+
+                fetch(`/api/update_proxy_endpoints/${proxyId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ endpoints: config })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            } catch (e) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        function removeProxy(proxyId) {
+            if (confirm('Are you sure you want to remove this proxy?')) {
+                fetch(`/api/remove_proxy/${proxyId}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                });
+            }
+        }
+
+        // Auto-refresh the page every 30 seconds
+        setTimeout(() => location.reload(), 30000);
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Chat Controller Dashboard</h1>
+
+        <!-- Registered Proxies Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Registered Proxies</h2>
+            <div class="space-y-6">
+                {% for proxy_id, info in proxies.items() %}
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold">{{ info.instance_name }} ({{ proxy_id[:8] }}...)</h3>
+                            <div class="text-sm text-gray-600">
+                                Host: {{ info.host }} | Port: {{ info.port }} | 
+                                Last Seen: {{ (info.last_seen).strftime('%Y-%m-%d %H:%M:%S') }}
+                                {% set time_diff = (current_time - info.last_seen).total_seconds() %}
+                                {% if time_diff < 60 %}
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded">Active</span>
+                                {% elif time_diff < 120 %}
+                                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Warning</span>
+                                {% else %}
+                                    <span class="px-2 py-1 bg-red-100 text-red-800 rounded">Stale</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <button
+                            onclick="removeProxy('{{ proxy_id }}')"
+                            class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                            Remove
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block font-medium">Endpoints Configuration:</label>
+                        <textarea 
+                            id="config_{{ proxy_id }}"
+                            class="w-full h-48 font-mono text-sm p-2 border rounded"
+                        >{{ info.endpoints | tojson(indent=2) }}</textarea>
+                        <button
+                            onclick="updateProxyEndpoints('{{ proxy_id }}')"
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                            Update Configuration
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
